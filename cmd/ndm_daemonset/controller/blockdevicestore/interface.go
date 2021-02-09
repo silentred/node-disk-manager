@@ -7,7 +7,7 @@ import (
 type BlockDeviceStore interface {
 	CreateBlockDevice(blockDevice apis.BlockDevice) error
 	UpdateBlockDevice(blockDevice apis.BlockDevice, oldBlockDevice *apis.BlockDevice) error
-	DeactivateBlockDevice(blockDevice apis.BlockDevice) error
+	DeactivateBlockDevice(blockDevice apis.BlockDevice)
 	GetBlockDevice(name string) (*apis.BlockDevice, error)
 	DeleteBlockDevice(name string)
 	ListBlockDeviceResource(listAll bool) (*apis.BlockDeviceList, error)

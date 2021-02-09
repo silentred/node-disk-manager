@@ -111,7 +111,6 @@ func (k *Kubernetes) UpdateBlockDevice(blockDevice apis.BlockDevice, oldBlockDev
 
 // DeactivateBlockDevice API is used to set blockdevice status to "inactive" state in etcd
 func (k *Kubernetes) DeactivateBlockDevice(blockDevice apis.BlockDevice) {
-
 	blockDeviceCopy := blockDevice.DeepCopy()
 	blockDeviceCopy.Status.State = types.NDMInactive
 	err := k.Clientset.Update(context.TODO(), blockDeviceCopy)
