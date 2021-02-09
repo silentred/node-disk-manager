@@ -11,5 +11,4 @@ type BlockDeviceStore interface {
 	GetBlockDevice(name string) (*apis.BlockDevice, error)
 	DeleteBlockDevice(name string)
 	ListBlockDeviceResource(listAll bool) (*apis.BlockDeviceList, error)
-	MarkBlockDeviceStatusToUnknown()
 }
