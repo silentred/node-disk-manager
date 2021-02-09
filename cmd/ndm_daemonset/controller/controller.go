@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/openebs/node-disk-manager/blockdevice"
+	"github.com/openebs/node-disk-manager/cmd/ndm_daemonset/controller/blockdevicestore"
 	"github.com/openebs/node-disk-manager/pkg/apis"
 
 	v1 "k8s.io/api/core/v1"
@@ -114,6 +115,8 @@ type Controller struct {
 	NodeAttributes map[string]string
 	// BDHierarchy stores the hierarchy of devices on this node
 	BDHierarchy blockdevice.Hierarchy
+	// BlockDeviceStore
+	BlockDeviceStore blockdevicestore.BlockDeviceStore
 }
 
 // NewController returns a controller pointer for any error case it will return nil
@@ -164,6 +167,10 @@ func (c *Controller) SetControllerOptions(opts NDMOptions) error {
 	if err := c.setNodeAttributes(); err != nil {
 		return err
 	}
+
+	// init store
+	c.BlockDeviceStore = blockdevicestore.NewKubernetes(c.Clientset, c.Namespace, c.NodeAttributes)
+
 	return nil
 }
 
