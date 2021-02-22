@@ -45,3 +45,7 @@ const (
 	// NDMDefaultDeviceType will be used to initialize the blockdevice type.
 	NDMDefaultDeviceType = "blockdevice"
 )
+
+const (
+	DefaultNamespace = "openebs"
+)

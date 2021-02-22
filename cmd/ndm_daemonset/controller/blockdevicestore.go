@@ -17,8 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
-
 	apis "github.com/openebs/node-disk-manager/pkg/apis/openebs/v1alpha1"
 	"github.com/openebs/node-disk-manager/pkg/util"
 	"k8s.io/klog"
@@ -111,12 +109,12 @@ func (c *Controller) MarkBlockDeviceStatusToUnknown() {
 		return
 	}
 	for _, item := range blockDeviceList.Items {
-		blockDeviceCopy := item.DeepCopy()
-		blockDeviceCopy.Status.State = NDMUnknown
-		err := c.Clientset.Update(context.TODO(), blockDeviceCopy)
+		// blockDeviceCopy := item.DeepCopy()
+		item.Status.State = NDMUnknown
+		err := c.BlockDeviceStore.UpdateBlockDevice(item, &item)
+		// err := c.Clientset.Update(context.TODO(), blockDeviceCopy)
 		if err == nil {
-			klog.Error("Status marked unknown for blockdevice object: ",
-				blockDeviceCopy.ObjectMeta.Name)
+			klog.Error("Status marked unknown for blockdevice object: ", item.ObjectMeta.Name)
 		}
 	}
 }

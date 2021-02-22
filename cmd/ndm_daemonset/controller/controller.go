@@ -26,6 +26,7 @@ import (
 
 	"github.com/openebs/node-disk-manager/blockdevice"
 	"github.com/openebs/node-disk-manager/cmd/ndm_daemonset/controller/blockdevicestore"
+	"github.com/openebs/node-disk-manager/cmd/ndm_daemonset/controller/types"
 	"github.com/openebs/node-disk-manager/pkg/apis"
 
 	v1 "k8s.io/api/core/v1"
@@ -122,35 +123,15 @@ type Controller struct {
 // NewController returns a controller pointer for any error case it will return nil
 func NewController() (*Controller, error) {
 	controller := &Controller{}
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	controller.config = cfg
 
 	// get the namespace in which NDM is installed
 	ns, err := getNamespace()
 	if err != nil {
-		return controller, err
+		klog.Errorf("%+v. Use default namespace %s", err, types.DefaultNamespace)
+		ns = types.DefaultNamespace
 	}
 	controller.Namespace = ns
 
-	mgr, err := manager.New(controller.config, manager.Options{Namespace: controller.Namespace, MetricsBindAddress: "0"})
-	if err != nil {
-		return controller, err
-	}
-
-	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		return controller, err
-	}
-
-	_, err = controller.newClientSet()
-	if err != nil {
-		return controller, err
-	}
-
-	controller.WaitForBlockDeviceCRD()
 	return controller, nil
 }
 
@@ -169,7 +150,29 @@ func (c *Controller) SetControllerOptions(opts NDMOptions) error {
 	}
 
 	// init store
-	c.BlockDeviceStore = blockdevicestore.NewKubernetes(c.Clientset, c.Namespace, c.NodeAttributes)
+	_, err := c.newClientSet()
+	// err is nil, means use k8s as blockdevicestore
+	if err == nil {
+		klog.Info("Using Kubernetes as BlockDeviceStore")
+		// NodeAttributes is a map, so the data can be read in BlockDeviceStore
+		// TODO: NodeAttributes has potential concurrent read problem. use a copy of map?
+		c.BlockDeviceStore = blockdevicestore.NewKubernetes(c.Clientset, c.Namespace, c.NodeAttributes)
+
+		// setup scheme
+		mgr, err := manager.New(c.config, manager.Options{Namespace: c.Namespace, MetricsBindAddress: "0"})
+		if err != nil {
+			return err
+		}
+		// Setup Scheme for all resources
+		if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+			return err
+		}
+		c.WaitForBlockDeviceCRD()
+
+	} else {
+		klog.Info("Using Memory as BlockDeviceStore")
+		c.BlockDeviceStore = blockdevicestore.NewMemory(c.Namespace)
+	}
 
 	return nil
 }
@@ -178,6 +181,12 @@ func (c *Controller) SetControllerOptions(opts NDMOptions) error {
 // if it gets Client from config. It returns the generated
 // client, else it returns error
 func (c *Controller) newClientSet() (client.Client, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	c.config = cfg
+
 	clientSet, err := client.New(c.config, client.Options{})
 	if err != nil {
 		return nil, err
@@ -204,7 +213,14 @@ func (c *Controller) setNodeAttributes() error {
 // setHostName set NodeAttribute field in Controller struct
 // from the labels in node object
 func (c *Controller) setHostName() error {
-	nodeName := c.NodeAttributes[NodeNameKey]
+	nodeName, ok := os.LookupEnv("HOSTNAME")
+	if ok {
+		c.NodeAttributes[HostNameKey] = nodeName
+		return nil
+	}
+
+	// TODO: better not find hostname from apiserver
+	nodeName = c.NodeAttributes[NodeNameKey]
 	// get the node object and fetch the hostname label from the
 	// node object
 	node := &v1.Node{}
