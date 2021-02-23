@@ -55,4 +55,32 @@ You can push to your custom registry and modify the ndm-operator.yaml file for y
 * Thanks to [Humble](https://github.com/humblec), [Jan](https://github.com/jsafrane) and other from the [Kubernetes Storage Community](https://github.com/kubernetes-incubator/external-storage/issues/736) for reviewing the approach and evaluating the use-case. 
 
 
+# 编译测试
 
+```
+# 启动一个容器
+docker run -d -it -v $PWD:/go/src/github.com/openebs/node-disk-manager golang:1.14.7 sh
+
+# 编译安装依赖, 从 install-dep.sh 中复制来一下命令
+# update the packages
+apt-get update -y
+
+# udev and blkid is required for building NDM.
+apt-get install --yes libudev-dev libblkid-dev
+
+# we need openSeaChest repo to build node-disk-manager
+git clone --recursive --branch Release-19.06.02 https://github.com/openebs/openSeaChest.git
+cd openSeaChest/Make/gcc
+make release
+cd ../../
+cp opensea-common/Make/gcc/lib/libopensea-common.a /usr/lib
+cp opensea-operations/Make/gcc/lib/libopensea-operations.a /usr/lib
+cp opensea-transport/Make/gcc/lib/libopensea-transport.a /usr/lib
+
+
+# 编译 ndm
+make build.ndm
+
+# 运行 ndm, 必须设置两个ENV变量; 
+NODE_NAME=test1 HOSTNAME=host1 /go/bin/ndm start --logtostderr -v4 --config=node-disk-manager.yaml
+```
